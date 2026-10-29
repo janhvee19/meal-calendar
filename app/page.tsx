@@ -35,6 +35,10 @@ export default function MealCalendar() {
   const [mealsOpen, setMealsOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSlot, setNewSlot] = useState<Slot | "any">("breakfast");
+  const [fillOpen, setFillOpen] = useState(false);
+  const [fillRange, setFillRange] = useState<"week" | "month">("week");
+  const [fillOverwrite, setFillOverwrite] = useState(false);
+  const [prevData, setPrevData] = useState<PlanData | null>(null);
 
   // On first load (client only): set today's date and load saved data
   useEffect(() => {
@@ -113,17 +117,59 @@ export default function MealCalendar() {
 
   const removeMeal = (id: string) => setMeals(meals.filter((m) => m.id !== id));
 
-  // Dropdown options for one slot: meals tagged for it, or tagged "any"
+  // Meals that can go in one slot: tagged for it, or tagged "any" (in list order)
+  const poolFor = (slot: Slot) =>
+    meals.filter((m) => m.slot === slot || m.slot === "any").map((m) => m.name);
+
+  // Dropdown options for one slot in the day panel
   const optionsFor = (slot: Slot) => {
-    const names = meals
-      .filter((m) => m.slot === slot || m.slot === "any")
-      .map((m) => m.name);
+    const names = poolFor(slot);
     const current = draft[slot];
     if (current && !names.includes(current)) names.unshift(current);
     return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
   };
 
+  // Fill the week/month by rotating through each slot's saved meals
+  const fill = () => {
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (fillRange === "week") {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+    } else {
+      from = new Date(view.getFullYear(), view.getMonth(), 1);
+      to = new Date(view.getFullYear(), view.getMonth() + 1, 0);
+    }
+    const next: PlanData = {};
+    for (const k of Object.keys(data)) next[k] = { ...data[k] };
+
+    const total = Math.round((to.getTime() - from.getTime()) / 86400000);
+    for (let i = 0; i <= total; i++) {
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
+      const key = toKey(d);
+      for (const { key: slot } of SLOTS) {
+        const pool = poolFor(slot);
+        if (pool.length === 0) continue;
+        if (!fillOverwrite && next[key]?.[slot]) continue;
+        if (!next[key]) next[key] = {};
+        next[key][slot] = pool[i % pool.length];
+      }
+    }
+    setPrevData(data);
+    setData(next);
+    setFillOpen(false);
+  };
+
+  const undoFill = () => {
+    if (!prevData) return;
+    setData(prevData);
+    setPrevData(null);
+  };
+
   const btn = "rounded-lg border px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10";
+  const panel =
+    "max-h-[90vh] w-full max-w-sm overflow-auto rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
     <main className="mx-auto w-full max-w-5xl p-3">
@@ -131,6 +177,8 @@ export default function MealCalendar() {
         <h1 className="mr-auto text-xl font-semibold">
           {view.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </h1>
+        {prevData && <button onClick={undoFill} className={btn}>Undo fill</button>}
+        <button onClick={() => setFillOpen(true)} className={btn}>Fill</button>
         <button onClick={() => setMealsOpen(true)} className={btn}>My meals</button>
         <button onClick={() => shiftMonth(-1)} aria-label="Previous month" className={btn}>‹</button>
         <button onClick={goToday} className={btn}>Today</button>
@@ -175,8 +223,7 @@ export default function MealCalendar() {
       {editing && (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setEditing(null)}>
-          <div className="max-h-[90vh] w-full max-w-sm overflow-auto rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
-            onClick={(e) => e.stopPropagation()}>
+          <div className={panel} onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-2 font-semibold">
               {editing.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </h2>
@@ -208,12 +255,64 @@ export default function MealCalendar() {
         </div>
       )}
 
+      {/* Fill panel: rotate saved meals across days */}
+      {fillOpen && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setFillOpen(false)}>
+          <div className={panel} onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-2 font-semibold">Fill the calendar</h2>
+            <p className="mb-3 text-xs opacity-70">
+              Your saved meals rotate across the days, in the order they appear in My meals.
+            </p>
+
+            <label className="block text-xs opacity-70">
+              Fill
+              <select
+                value={fillRange}
+                onChange={(e) => setFillRange(e.target.value as "week" | "month")}
+                className={field}
+              >
+                <option value="week">Next 7 days (from today)</option>
+                <option value="month">The whole month shown</option>
+              </select>
+            </label>
+
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={fillOverwrite}
+                onChange={(e) => setFillOverwrite(e.target.checked)} />
+              Replace meals already scheduled
+            </label>
+
+            <ul className="mt-3 space-y-1 text-xs">
+              {SLOTS.map(({ key, label }) => {
+                const pool = poolFor(key);
+                return (
+                  <li key={key} className="rounded-lg border px-2 py-1">
+                    <span className="font-medium">{label}:</span>{" "}
+                    <span className="opacity-70">
+                      {pool.length ? pool.join(" → ") : "no meals saved (will be skipped)"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setFillOpen(false)} className="rounded-lg border px-3 py-1.5">Cancel</button>
+              <button onClick={fill} disabled={meals.length === 0}
+                className="rounded-lg bg-green-700 px-3 py-1.5 text-white disabled:opacity-40">
+                Fill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* My meals panel: manage the saved list */}
       {mealsOpen && (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setMealsOpen(false)}>
-          <div className="max-h-[90vh] w-full max-w-sm overflow-auto rounded-xl bg-white p-4 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
-            onClick={(e) => e.stopPropagation()}>
+          <div className={panel} onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-2 font-semibold">My meals</h2>
 
             <input
