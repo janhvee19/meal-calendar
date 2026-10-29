@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meal Calendar
 
-## Getting Started
+A Google Calendar-style meal planner. Plan breakfast, lunch, snacks and dinner in advance, then open the app each morning and see exactly what you're eating.
 
-First, run the development server:
+![Meal Calendar screenshot](public/screenshot.png)
+
+## Features
+
+- **Month calendar view.** Every date shows its meals as color-coded chips (breakfast, lunch, snack, dinner).
+- **My meals list.** Save the meals you actually eat once, tagged by type, and pick from them when scheduling a day.
+- **Click-to-plan.** Click any date to choose that day's meals from dropdowns.
+- **Fill the calendar.** Rotate your saved meals across the next 7 days or the whole month in one click, with an undo button.
+- **Saved automatically.** Your plan and meal list stay in your browser, so nothing is lost on refresh.
+- **Light and dark mode.** Follows your system theme.
+
+## Tech stack
+
+- [Next.js](https://nextjs.org/) (App Router)
+- React and TypeScript
+- Tailwind CSS
+- Browser `localStorage` for data (no backend yet)
+
+## Getting started
 
 ```bash
+git clone https://github.com/janhvee19/meal-calendar.git
+cd meal-calendar
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How to use
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Click **My meals** and add the meals you eat, choosing a type for each (Breakfast, Lunch, Snack, Dinner or Any).
+2. Click a date and pick that day's meals from the dropdowns, or click **Fill** to schedule a whole week or month automatically.
+3. Use **Undo fill** if you don't like the result.
 
-## Learn More
+## Roadmap
 
-To learn more about Next.js, take a look at the following resources:
+- [ ] Week view with full meal names
+- [ ] Sync across devices (Supabase)
+- [ ] Installable on phones (PWA) with reminders
+- [ ] Phone home-screen widget
+- [ ] Browser extension showing today's and tomorrow's meals
+- [ ] Grocery list generated from planned meals
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Author
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built by Janhvee Singh.
